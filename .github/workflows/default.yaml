@@ -18,10 +18,6 @@ jobs:
           go-version: ^1
         id: go
 
-#      - name: Install gometalinter
-#        run: |
-#          go get github.com/alecthomas/gometalinter
-
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
 
@@ -29,7 +25,5 @@ jobs:
         run: |
           make style
           make vet
-# Disabled linting as gometalinter has been deprecated and can't actually install its dependencies correctly
-#          make gometalinter
           make build
           make test
