@@ -23,8 +23,7 @@ jobs:
 
       - name: Run make
         run: |
-          make style
+          make crossbuild
           make vet
           make test
           make crossbuild
-          ls -al
