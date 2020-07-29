@@ -25,5 +25,6 @@ jobs:
         run: |
           make style
           make vet
-          make build
           make test
+          make crossbuild
+          ls -al
