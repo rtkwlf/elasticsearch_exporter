@@ -18,6 +18,10 @@ jobs:
           go-version: ^1
         id: go
 
+      - name: Install gometalinter
+        run: |
+          go get github.com/alecthomas/gometalinter
+
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
 
@@ -25,6 +29,6 @@ jobs:
         run: |
           make style
           make vet
-          make lint
+          make gometalinter
           make build
           make test
