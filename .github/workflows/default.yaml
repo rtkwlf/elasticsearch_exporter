@@ -23,7 +23,6 @@ jobs:
 
       - name: Run make
         run: |
-          make crossbuild
           make vet
           make test
           make crossbuild
