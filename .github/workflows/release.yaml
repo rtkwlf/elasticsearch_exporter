@@ -22,7 +22,7 @@ jobs:
 
       - name: Build tarballs
         run: |
-          ::set-env name=_VERSION::`cat VERSION`
+          echo "::set-env name=_VERSION::`cat VERSION`"
           make vet
           make test
           make tarballs
