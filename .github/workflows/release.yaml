@@ -39,5 +39,7 @@ jobs:
           prerelease: false
 
       - name: Upload Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           promu release ${{ steps.create_release.outputs.upload_url }}
