@@ -1,3 +1,7 @@
+## 2.0.0
+
+* [BREAKING] removed a bunch of unneeded binary versions 
+
 ## 1.1.0
 
 repeating the breaking changes introduced in 1.1.0rc1:
