@@ -1,4 +1,4 @@
-## 2.0.0
+## 2.0.1 / 2020-08-12
 
 * [BREAKING] removed a bunch of unneeded binary versions 
 
