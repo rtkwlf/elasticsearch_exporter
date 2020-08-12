@@ -42,4 +42,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          promu release
+          promu release .tarballs
