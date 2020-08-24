@@ -1,3 +1,7 @@
+## 2.0.3 / 2020-08-24
+
+* [BREAKING] removed a bunch of unneeded binary versions - AWN internal build 
+
 ## 1.1.0
 
 repeating the breaking changes introduced in 1.1.0rc1:

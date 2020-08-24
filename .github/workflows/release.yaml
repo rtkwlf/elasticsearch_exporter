@@ -1,0 +1,45 @@
+name: Publish Release
+
+on:
+  push:
+    branches: [ awnmaster, master, actions ]
+    paths:
+      - 'VERSION'
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Build tarballs
+        run: |
+          echo "::set-env name=_VERSION::`cat VERSION`"
+          make vet
+          make test
+          make tarballs
+
+#      - name: Create Release
+#        id: create_release
+#        uses: actions/create-release@v1
+#        env:
+#          GITHUB_TOKEN: ${{ github.token }}
+#        with:
+#          tag_name: v${{ env._VERSION }}
+#          release_name: Release ${{ env._VERSION }}
+#          draft: false
+#          prerelease: false
+
+      - name: Upload Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          promu release .tarballs
