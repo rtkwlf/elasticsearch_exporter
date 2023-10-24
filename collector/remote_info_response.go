@@ -8,6 +8,7 @@ type RemoteCluster struct {
 	Seeds                    []string `json:"seeds"`
 	Connected                bool     `json:"connected"`
 	NumNodesConnected        int64    `json:"num_nodes_connected"`
+	NumProxySocketsConnected int64    `json:"num_proxy_sockets_connected"`
 	MaxConnectionsPerCluster int64    `json:"max_connections_per_cluster"`
 	InitialConnectTimeout    string   `json:"initial_connect_timeout"`
 	SkipUnavailable          bool     `json:"skip_unavailable"`
