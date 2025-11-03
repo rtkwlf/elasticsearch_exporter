@@ -353,8 +353,6 @@ func main() {
 			}
 		}
 		// Create TLS config with sanitized paths to prevent path traversal
-		// Paths are validated and sanitized in createSecureTLSConfig to prevent path traversal
-		// snyk:ignore:GO-2401 Path traversal is mitigated by comprehensive validation in createSecureTLSConfig
 		tlsCfg := createSecureTLSConfig(pemCA, pemCert, pemKey, insecure)
 		var transport http.RoundTripper = &http.Transport{
 			TLSClientConfig: tlsCfg,
