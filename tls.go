@@ -52,9 +52,6 @@ func createTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string, insecureSki
 }
 
 func loadCertificatesFrom(pemFile string) (*x509.CertPool, error) {
-	if ! strings.HasPrefix(pemFile, "/") {
-		pemFile = filepath.Join("/", pemFile)
-	}
 	caCert, err := os.ReadFile(pemFile)
 	if err != nil {
 		return nil, err
