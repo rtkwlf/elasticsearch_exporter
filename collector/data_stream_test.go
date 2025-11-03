@@ -1,4 +1,4 @@
-// Copyright 2022 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -27,7 +27,6 @@ import (
 )
 
 func TestDataStream(t *testing.T) {
-
 	tests := []struct {
 		name string
 		file string

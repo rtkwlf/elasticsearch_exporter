@@ -1,4 +1,4 @@
-// Copyright 2025 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -54,14 +54,12 @@ func TestILM(t *testing.T) {
 			indexF, err := os.Open(path.Join("../fixtures/ilm_indices", tt.file))
 			if err != nil {
 				t.Fatal(err)
-
 			}
 			defer indexF.Close()
 
 			statusF, err := os.Open(path.Join("../fixtures/ilm_status", tt.file))
 			if err != nil {
 				t.Fatal(err)
-
 			}
 			defer statusF.Close()
 
@@ -75,7 +73,6 @@ func TestILM(t *testing.T) {
 				})
 
 				sm.ServeHTTP(w, r)
-
 			}))
 			defer ts.Close()
 

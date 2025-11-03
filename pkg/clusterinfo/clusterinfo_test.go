@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -25,9 +25,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/common/promslog"
-
 	"github.com/blang/semver/v4"
+	"github.com/prometheus/common/promslog"
 )
 
 const (
@@ -45,7 +44,6 @@ const (
 type mockES struct{}
 
 func (mockES) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
-
 	fmt.Fprintf(w, `{
   "name" : "%s",
   "cluster_name" : "%s",
@@ -152,7 +150,7 @@ func TestRetriever_fetchAndDecodeClusterInfo(t *testing.T) {
 	versionNumber, _ := semver.Make(versionNumber)
 	luceneVersion, _ := semver.Make(luceneVersion)
 
-	var expected = &Response{
+	expected := &Response{
 		Name:        nodeName,
 		ClusterName: clusterName,
 		ClusterUUID: clusterUUID,

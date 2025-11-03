@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -25,9 +25,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var (
-	defaultIndicesMappingsLabels = []string{"index"}
-)
+var defaultIndicesMappingsLabels = []string{"index"}
 
 type indicesMappingsMetric struct {
 	Type  prometheus.ValueType
@@ -72,7 +70,6 @@ func NewIndicesMappings(logger *slog.Logger, client *http.Client, url *url.URL) 
 func countFieldsRecursive(properties IndexMappingProperties, fieldCounter float64) float64 {
 	// iterate over all properties
 	for _, property := range properties {
-
 		if property.Type != nil && *property.Type != "object" {
 			// property has a type set - counts as a field unless the value is object
 			// as the recursion below will handle counting that

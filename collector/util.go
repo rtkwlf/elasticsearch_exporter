@@ -1,4 +1,4 @@
-// Copyright 2023 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -29,7 +29,7 @@ func getURL(ctx context.Context, hc *http.Client, log *slog.Logger, u string) ([
 
 	resp, err := hc.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get %s: %v", u, err)
+		return nil, err
 	}
 
 	defer func() {

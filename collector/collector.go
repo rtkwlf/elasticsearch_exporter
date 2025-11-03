@@ -1,4 +1,4 @@
-// Copyright 2022 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -185,7 +185,7 @@ func execute(ctx context.Context, name string, c Collector, ch chan<- prometheus
 		if IsNoDataError(err) {
 			logger.Debug("collector returned no data", "name", name, "duration_seconds", duration.Seconds(), "err", err)
 		} else {
-			logger.Error("collector failed", "name", name, "duration_seconds", duration.Seconds(), "err", err)
+			logger.Warn("collector failed", "name", name, "duration_seconds", duration.Seconds(), "err", err)
 		}
 		success = 0
 	} else {

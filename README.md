@@ -3,7 +3,11 @@
 [![CircleCI](https://circleci.com/gh/prometheus-community/elasticsearch_exporter.svg?style=svg)](https://circleci.com/gh/prometheus-community/elasticsearch_exporter)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prometheus-community/elasticsearch_exporter)](https://goreportcard.com/report/github.com/prometheus-community/elasticsearch_exporter)
 
-Prometheus exporter for various metrics about Elasticsearch, written in Go.
+Prometheus exporter for various metrics about Elasticsearch and OpenSearch, written in Go.
+
+## Supported Versions
+
+We support all currently supported versions of Elasticsearch and OpenSearch. This project will make reasonable attempts to maintain compatibility with previous versions but considerations will be made for code maintainability and favoring supported versions. Where Elasticsearch and OpenSearch diverge, this project will make reasonable attempts to maintain compatibility with both. Some collectors may only be compatible with one or the other.
 
 ### Installation
 
@@ -51,7 +55,7 @@ elasticsearch_exporter --help
 | Argument                | Introduced in Version | Description                                                                                                                                                                                                                                                                                                                                                                           | Default     |
 | ----------------------- | --------------------- |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| ----------- |
 | collector.clustersettings| 1.6.0                | If true, query stats for cluster settings (As of v1.6.0, this flag has replaced "es.cluster_settings").                                                                                                                                                                                                                                                                                | false |
-| es.uri                  | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. Special characters in the user credentials need to be URL-encoded. | <http://localhost:9200> |
+| es.uri                  | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to **when running in single-target mode**. Leave empty (the default) when you want to run the exporter only as a multi-target `/probe` endpoint. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. Special characters in the user credentials need to be URL-encoded. | "" |
 | es.all                  | 1.0.2                 | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                                                                                                                                                                                                                                                                                           | false |
 | es.indices              | 1.0.2                 | If true, query stats for all indices in the cluster.                                                                                                                                                                                                                                                                                                                                  | false |
 | es.indices_settings     | 1.0.4rc1              | If true, query settings stats for all indices in the cluster.                                                                                                                                                                                                                                                                                                                         | false |
@@ -60,8 +64,10 @@ elasticsearch_exporter --help
 | es.ilm                  | 1.6.0                 | If true, query index lifecycle policies for indices in the cluster.
 | es.shards               | 1.0.3rc1              | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`).                                                                                                                                                                                                                                                                         | false |
 | collector.snapshots     | 1.0.4rc1              | If true, query stats for the cluster snapshots. (As of v1.7.0, this flag has replaced "es.snapshots").                                                                                                                                                                                                                                                                                | false |
+| collector.health-report | 1.10.0                 | If true, query the health report (requires elasticsearch 8.7.0 or later)                                                                                                                                                                                                                                                                                                              | false |
 | es.slm                  |                       | If true, query stats for SLM.                                                                                                                                                                                                                                                                                                                                                         | false |
 | es.data_stream          |                       | If true, query state for Data Steams.                                                                                                                                                                                                                                                                                                                                                 | false |
+| es.remote_info          | 2.x.x                 | If true, query stats for configured remote clusters in the Elasticsearch cluster. Exposes connection metrics for cross-cluster search and replication.                                                                                                                                                                                                                                | false |
 | es.timeout              | 1.0.2                 | Timeout for trying to get stats from Elasticsearch. (ex: 20s)                                                                                                                                                                                                                                                                                                                         | 5s |
 | es.ca                   | 1.0.2                 | Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection.                                                                                                                                                                                                                                                                                      | |
 | es.client-private-key   | 1.0.2                 | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch.                                                                                                                                                                                                                                                                                      | |
@@ -72,6 +78,7 @@ elasticsearch_exporter --help
 | web.telemetry-path      | 1.0.2                 | Path under which to expose metrics.                                                                                                                                                                                                                                                                                                                                                   | /metrics |
 | aws.region              | 1.5.0                 | Region for AWS elasticsearch                                                                                                                                                                                                                                                                                                                                                          | |
 | aws.role-arn            | 1.6.0                 | Role ARN of an IAM role to assume.                                                                                                                                                                                                                                                                                                                                                    | |
+| config.file             | 2.0.0                 | Path to a YAML configuration file that defines `auth_modules:` used by the `/probe` multi-target endpoint. Leave unset when not using multi-target mode.                                                                                                                                                                                                                              | |
 | version                 | 1.0.2                 | Show version info on stdout and exit.                                                                                                                                                                                                                                                                                                                                                 | |
 
 Commandline parameters start with a single `-` for versions less than `1.1.0rc1`.
@@ -101,12 +108,117 @@ es.shards | not sure if `indices` or `cluster` `monitor` or both |
 collector.snapshots | `cluster:admin/snapshot/status` and `cluster:admin/repository/get` | [ES Forum Post](https://discuss.elastic.co/t/permissions-for-backup-user-with-x-pack/88057)
 es.slm | `manage_slm`
 es.data_stream | `monitor` or `manage` (per index or `*`) |
+es.remote_info | `cluster` `monitor` | Required for accessing remote cluster connection information via the `/_remote/info` endpoint
 
 Further Information
 
 - [Built in Users](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/built-in-users.html)
 - [Defining Roles](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/defining-roles.html)
 - [Privileges](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/security-privileges.html)
+
+### Multi-Target Scraping (beta)
+
+From v2.X the exporter exposes `/probe` allowing one running instance to scrape many clusters.
+
+Supported `auth_module` types:
+
+| type       | YAML fields                                                       | Injected into request                                                                 |
+| ---------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `userpass` | `userpass.username`, `userpass.password`, optional `options:` map | Sets HTTP basic-auth header, appends `options` as query parameters                    |
+| `apikey`   | `apikey:` Base64 API-Key string, optional `options:` map          | Adds `Authorization: ApiKey …` header, appends `options`                              |
+| `aws`      | `aws.region`, optional `aws.role_arn`, optional `options:` map    | Uses AWS SigV4 signing transport for HTTP(S) requests, appends `options`              |
+| `tls`      | `tls.ca_file`, `tls.cert_file`, `tls.key_file`                    | Uses client certificate authentication via TLS; cannot be mixed with other auth types |
+
+Example config:
+
+```yaml
+# exporter-config.yml
+auth_modules:
+  prod_basic:
+    type: userpass
+    userpass:
+      username: metrics
+      password: s3cr3t
+
+  staging_key:
+    type: apikey
+    apikey: "bXk6YXBpa2V5Ig=="  # base64 id:key
+    options:
+      sslmode: disable
+```
+
+Run exporter:
+
+```bash
+./elasticsearch_exporter --config.file=exporter-config.yml
+```
+
+Prometheus scrape_config:
+
+```yaml
+- job_name: es
+  metrics_path: /probe
+  params:
+    auth_module: [staging_key]
+  static_configs:
+    - targets: ["https://es-stage:9200"]
+  relabel_configs:
+    - source_labels: [__address__]
+      target_label: __param_target
+    - source_labels: [__param_target]
+      target_label: instance
+    - target_label: __address__
+      replacement: exporter:9114
+```
+
+Notes:
+- `/metrics` serves a single, process-wide registry and is intended for single-target mode.
+- `/probe` creates a fresh registry per scrape for the given `target` allowing multi-target scraping.
+- Any `options:` under an auth module will be appended as URL query parameters to the target URL.
+- The `tls` auth module (client certificate authentication) is intended for self‑managed Elasticsearch/OpenSearch deployments. Amazon OpenSearch Service typically authenticates at the domain edge with IAM/SigV4 and does not support client certificate authentication; use the `aws` auth module instead when scraping Amazon OpenSearch Service domains.
+
+### Remote Cluster Monitoring
+
+The remote info collector (`es.remote_info`) provides monitoring capabilities for Elasticsearch cross-cluster search and cross-cluster replication configurations. This collector queries the `/_remote/info` endpoint to gather connection statistics for configured remote clusters.
+
+#### When to Enable
+
+Enable this collector when you have:
+- Cross-cluster search configured
+- Cross-cluster replication set up
+- Multiple Elasticsearch clusters connected via remote cluster connections
+- Need to monitor the health and connectivity of remote cluster connections
+
+#### Metrics Provided
+
+The collector provides connection metrics labeled by `remote_cluster` name, including:
+- Active node connections to remote clusters
+- Proxy socket connections (for clusters behind proxies)
+- Maximum connection limits per cluster
+- Connection health and scrape statistics
+
+#### Prerequisites
+
+- Remote clusters must be properly configured in your Elasticsearch cluster
+- The user account must have `cluster:monitor` privileges to access the `/_remote/info` endpoint
+- Remote clusters should be accessible and properly configured with seeds
+
+#### Example Configuration
+
+To enable remote cluster monitoring:
+
+```bash
+./elasticsearch_exporter --es.uri=http://localhost:9200 --es.remote_info
+```
+
+The collector will automatically discover all configured remote clusters and expose metrics for each one.
+
+The remote info collector can also be enabled via the `ES_REMOTE_INFO` environment variable:
+
+```bash
+export ES_REMOTE_INFO=true
+./elasticsearch_exporter --es.uri=http://localhost:9200
+```
 
 ### Metrics
 
@@ -270,6 +382,37 @@ Further Information
 | elasticsearch_data_stream_stats_json_parse_failures                  | counter    | 0           | Number of parsing failures for Data Stream stats                                                    |
 | elasticsearch_data_stream_backing_indices_total                      | gauge      | 1           | Number of backing indices for Data Stream                                                           |
 | elasticsearch_data_stream_store_size_bytes                           | gauge      | 1           | Current size of data stream backing indices in bytes                                                |
+| elasticsearch_health_report_creating_primaries                       | gauge      | 1           | The number of creating primary shards                                                               |
+| elasticsearch_health_report_creating_replicas                        | gauge      | 1           | The number of creating replica shards                                                               |
+| elasticsearch_health_report_data_stream_lifecycle_status             | gauge      | 2           | Data stream lifecycle status                                                                        |
+| elasticsearch_health_report_disk_status                              | gauge      | 2           | disk status                                                                                         |
+| elasticsearch_health_report_ilm_policies                             | gauge      | 1           | The number of ILM Policies                                                                          |
+| elasticsearch_health_report_ilm_stagnating_indices                   | gauge      | 1           | The number of stagnating indices                                                                    |
+| elasticsearch_health_report_ilm_status                               | gauge      | 2           | ILM status                                                                                          |
+| elasticsearch_health_report_initializing_primaries                   | gauge      | 1           | The number of initializing primary shards                                                           |
+| elasticsearch_health_report_initializing_replicas                    | gauge      | 1           | The number of initializing replica shards                                                           |
+| elasticsearch_health_report_master_is_stable_status                  | gauge      | 2           | Master is stable status                                                                             |
+| elasticsearch_health_report_max_shards_in_cluster_data               | gauge      | 1           | The number of maximum shards in a cluster                                                           |
+| elasticsearch_health_report_max_shards_in_cluster_frozen             | gauge      | 1           | The number of maximum frozen shards in a cluster                                                    |
+| elasticsearch_health_report_repository_integrity_status              | gauge      | 2           | Repository integrity status                                                                         |
+| elasticsearch_health_report_restarting_primaries                     | gauge      | 1           | The number of restarting primary shards                                                             |
+| elasticsearch_health_report_restarting_replicas                      | gauge      | 1           | The number of restarting replica shards                                                             |
+| elasticsearch_health_report_shards_availabilty_status                | gauge      | 2           | Shards availabilty status                                                                           |
+| elasticsearch_health_report_shards_capacity_status                   | gauge      | 2           | Shards capacity status                                                                              |
+| elasticsearch_health_report_slm_policies                             | gauge      | 1           | The number of SLM policies                                                                          |
+| elasticsearch_health_report_slm_status                               | gauge      | 2           | SLM status                                                                                          |
+| elasticsearch_health_report_started_primaries                        | gauge      | 1           | The number of started primary shards                                                                |
+| elasticsearch_health_report_started_replicas                         | gauge      | 1           | The number of started replica shards                                                                |
+| elasticsearch_health_report_status                                   | gauge      | 2           | Overall cluster status                                                                              |
+| elasticsearch_health_report_total_repositories                       | gauge      | 1           | The number snapshot repositories                                                                    |
+| elasticsearch_health_report_unassigned_primaries                     | gauge      | 1           | The number of unassigned primary shards                                                             |
+| elasticsearch_health_report_unassigned_replicas                      | gauge      | 1           | The number of unassigned replica shards                                                             |
+| elasticsearch_remote_info_num_nodes_connected                        | gauge      | 1           | Number of nodes currently connected to the remote cluster                                           |
+| elasticsearch_remote_info_num_proxy_sockets_connected                | gauge      | 1           | Number of proxy sockets currently connected to the remote cluster                                   |
+| elasticsearch_remote_info_max_connections_per_cluster                | gauge      | 1           | Maximum number of connections configured per remote cluster                                         |
+| elasticsearch_remote_info_stats_up                                   | gauge      | 0           | Was the last scrape of the Elasticsearch remote info endpoint successful                           |
+| elasticsearch_remote_info_stats_total_scrapes                        | counter    | 0           | Current total Elasticsearch remote info scrapes                                                     |
+| elasticsearch_remote_info_stats_json_parse_failures                  | counter    | 0           | Number of errors while parsing JSON from remote info endpoint                                       |
 
 ### Alerts & Recording Rules
 
@@ -300,10 +443,6 @@ Then transferred this repository to the Prometheus Community in May 2021.
 
 This package was originally created and maintained by [Eric Richardson](https://github.com/ewr),
 who transferred this repository to us in January 2017.
-
-Maintainers of this repository:
-
-- Christoph Oelmüller <christoph.oelmueller@justwatch.com> @zwopir
 
 Please refer to the Git commit log for a complete list of contributors.
 

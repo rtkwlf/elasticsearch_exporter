@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -143,7 +143,6 @@ func (c *Snapshots) Update(ctx context.Context, ch chan<- prometheus.Metric) err
 
 	// Snapshots stats
 	for repositoryName, snapshotStats := range snapshotsStatsResp {
-
 		ch <- prometheus.MustNewConstMetric(
 			numSnapshots,
 			prometheus.GaugeValue,
@@ -164,7 +163,7 @@ func (c *Snapshots) Update(ctx context.Context, ch chan<- prometheus.Metric) err
 
 		latest := float64(0)
 		for i := len(snapshotStats.Snapshots) - 1; i >= 0; i-- {
-			var snap = snapshotStats.Snapshots[i]
+			snap := snapshotStats.Snapshots[i]
 			if snap.State == "SUCCESS" || snap.State == "PARTIAL" {
 				latest = float64(snap.StartTimeInMillis / 1000)
 				break

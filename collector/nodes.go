@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -69,12 +69,10 @@ func getRoles(node NodeStatsNodeResponse) map[string]bool {
 	return roles
 }
 
-var (
-	nodesRolesMetric = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "nodes", "roles"),
-		"Node roles",
-		append(defaultRoleLabels, "role"), nil,
-	)
+var nodesRolesMetric = prometheus.NewDesc(
+	prometheus.BuildFQName(namespace, "nodes", "roles"),
+	"Node roles",
+	append(defaultRoleLabels, "role"), nil,
 )
 
 var (
@@ -2012,6 +2010,5 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 				)
 			}
 		}
-
 	}
 }
