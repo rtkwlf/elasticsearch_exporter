@@ -53,11 +53,6 @@ func createTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string, insecureSki
 		tlsConfig.InsecureSkipVerify = true
 	}
 	if len(pemFile) > 0 {
-		// Validate the CA file path to prevent path traversal attacks
-		if err := validateFilePath(pemFile); err != nil {
-			log.Fatalf("Invalid CA file path %s: %s", pemFile, err)
-			return nil
-		}
 		rootCerts, err := loadCertificatesFrom(pemFile)
 		if err != nil {
 			log.Fatalf("Couldn't load root certificate from %s. Got %s.", pemFile, err)
@@ -66,15 +61,6 @@ func createTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string, insecureSki
 		tlsConfig.RootCAs = rootCerts
 	}
 	if len(pemCertFile) > 0 && len(pemPrivateKeyFile) > 0 {
-		// Validate the client certificate and key file paths to prevent path traversal attacks
-		if err := validateFilePath(pemCertFile); err != nil {
-			log.Fatalf("Invalid client certificate file path %s: %s", pemCertFile, err)
-			return nil
-		}
-		if err := validateFilePath(pemPrivateKeyFile); err != nil {
-			log.Fatalf("Invalid client key file path %s: %s", pemPrivateKeyFile, err)
-			return nil
-		}
 		// Load files once to catch configuration error early.
 		_, err := loadPrivateKeyFrom(pemCertFile, pemPrivateKeyFile)
 		if err != nil {
@@ -91,6 +77,11 @@ func createTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string, insecureSki
 }
 
 func loadCertificatesFrom(pemFile string) (*x509.CertPool, error) {
+	// Validate the file path to prevent path traversal attacks
+	if err := validateFilePath(pemFile); err != nil {
+		return nil, fmt.Errorf("invalid certificate file path: %w", err)
+	}
+	
 	caCert, err := os.ReadFile(pemFile)
 	if err != nil {
 		return nil, err
@@ -101,6 +92,14 @@ func loadCertificatesFrom(pemFile string) (*x509.CertPool, error) {
 }
 
 func loadPrivateKeyFrom(pemCertFile, pemPrivateKeyFile string) (*tls.Certificate, error) {
+	// Validate both file paths to prevent path traversal attacks
+	if err := validateFilePath(pemCertFile); err != nil {
+		return nil, fmt.Errorf("invalid certificate file path: %w", err)
+	}
+	if err := validateFilePath(pemPrivateKeyFile); err != nil {
+		return nil, fmt.Errorf("invalid private key file path: %w", err)
+	}
+	
 	privateKey, err := tls.LoadX509KeyPair(pemCertFile, pemPrivateKeyFile)
 	if err != nil {
 		return nil, err
