@@ -339,9 +339,7 @@ func main() {
 				insecure = true
 			}
 		}
-		if ! strings.HasPrefix(pemCA, "/") {
-			pemCA = filepath.Join("/", pemCA)
-		}
+		
 		tlsCfg := createTLSConfig(pemCA, pemCert, pemKey, insecure)
 		var transport http.RoundTripper = &http.Transport{
 			TLSClientConfig: tlsCfg,
