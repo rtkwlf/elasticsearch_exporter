@@ -339,7 +339,7 @@ func main() {
 				insecure = true
 			}
 		}
-		tlsCfg := createTLSConfig(Santize(pemCA), pemCert, pemKey, insecure)
+		tlsCfg := createTLSConfig(pemCA, pemCert, pemKey, insecure)
 		var transport http.RoundTripper = &http.Transport{
 			TLSClientConfig: tlsCfg,
 			Proxy:           http.ProxyFromEnvironment,
@@ -427,11 +427,4 @@ func main() {
 	srvCtx, srvCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer srvCancel()
 	_ = server.Shutdown(srvCtx)
-}
-
-func Sanitize(path string) string {
-	if !strings.HasPrefix(path, string(filepath.Separator)) {
-		path = filepath.Join(filepath.Separator, path)
-	}
-	return path
 }

@@ -16,10 +16,35 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 )
+
+// validateFilePath validates that a file path is safe to use and prevents path traversal attacks.
+// It ensures the path doesn't contain directory traversal sequences and is within allowed bounds.
+func validateFilePath(path string) error {
+	if path == "" {
+		return nil // Empty paths are allowed (will be skipped)
+	}
+	
+	// Clean the path to resolve any ".." or "." elements
+	cleanPath := filepath.Clean(path)
+	
+	// Check for path traversal attempts
+	if strings.Contains(cleanPath, "..") {
+		return fmt.Errorf("path contains directory traversal sequences: %s", path)
+	}
+	
+	// Ensure the path is absolute or relative but doesn't start with ".."
+	if strings.HasPrefix(cleanPath, "../") || cleanPath == ".." {
+		return fmt.Errorf("path attempts to traverse outside allowed directory: %s", path)
+	}
+	
+	return nil
+}
 
 func createTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string, insecureSkipVerify bool) *tls.Config {
 	tlsConfig := tls.Config{}
@@ -28,6 +53,11 @@ func createTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string, insecureSki
 		tlsConfig.InsecureSkipVerify = true
 	}
 	if len(pemFile) > 0 {
+		// Validate the CA file path to prevent path traversal attacks
+		if err := validateFilePath(pemFile); err != nil {
+			log.Fatalf("Invalid CA file path %s: %s", pemFile, err)
+			return nil
+		}
 		rootCerts, err := loadCertificatesFrom(pemFile)
 		if err != nil {
 			log.Fatalf("Couldn't load root certificate from %s. Got %s.", pemFile, err)
@@ -36,6 +66,15 @@ func createTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string, insecureSki
 		tlsConfig.RootCAs = rootCerts
 	}
 	if len(pemCertFile) > 0 && len(pemPrivateKeyFile) > 0 {
+		// Validate the client certificate and key file paths to prevent path traversal attacks
+		if err := validateFilePath(pemCertFile); err != nil {
+			log.Fatalf("Invalid client certificate file path %s: %s", pemCertFile, err)
+			return nil
+		}
+		if err := validateFilePath(pemPrivateKeyFile); err != nil {
+			log.Fatalf("Invalid client key file path %s: %s", pemPrivateKeyFile, err)
+			return nil
+		}
 		// Load files once to catch configuration error early.
 		_, err := loadPrivateKeyFrom(pemCertFile, pemPrivateKeyFile)
 		if err != nil {
