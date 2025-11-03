@@ -339,8 +339,7 @@ func main() {
 				insecure = true
 			}
 		}
-		pemCA = Sanitize(pemCA)
-		tlsCfg := createTLSConfig(pemCA, pemCert, pemKey, insecure)
+		tlsCfg := createTLSConfig(Santize(pemCA), pemCert, pemKey, insecure)
 		var transport http.RoundTripper = &http.Transport{
 			TLSClientConfig: tlsCfg,
 			Proxy:           http.ProxyFromEnvironment,
