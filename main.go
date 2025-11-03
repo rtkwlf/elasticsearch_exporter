@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -325,14 +326,26 @@ func main() {
 		// Apply TLS configuration from auth module if provided (for transport security)
 		// This matches single-target behavior where TLS settings are always applied
 		if am != nil && am.TLS != nil {
-			// Override with module-specific TLS settings
+			// Override with module-specific TLS settings with path validation
 			if am.TLS.CAFile != "" {
+				if err := validateTLSFilePath(am.TLS.CAFile); err != nil {
+					http.Error(w, fmt.Sprintf("Invalid CA file path: %v", err), http.StatusBadRequest)
+					return
+				}
 				pemCA = am.TLS.CAFile
 			}
 			if am.TLS.CertFile != "" {
+				if err := validateTLSFilePath(am.TLS.CertFile); err != nil {
+					http.Error(w, fmt.Sprintf("Invalid certificate file path: %v", err), http.StatusBadRequest)
+					return
+				}
 				pemCert = am.TLS.CertFile
 			}
 			if am.TLS.KeyFile != "" {
+				if err := validateTLSFilePath(am.TLS.KeyFile); err != nil {
+					http.Error(w, fmt.Sprintf("Invalid key file path: %v", err), http.StatusBadRequest)
+					return
+				}
 				pemKey = am.TLS.KeyFile
 			}
 			if am.TLS.InsecureSkipVerify {
@@ -427,4 +440,27 @@ func main() {
 	srvCtx, srvCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer srvCancel()
 	_ = server.Shutdown(srvCtx)
+}
+
+// validateTLSFilePath validates that a TLS file path is safe to use and prevents path traversal attacks.
+// It returns an error if the path contains directory traversal sequences.
+func validateTLSFilePath(path string) error {
+	if path == "" {
+		return nil // Empty paths are allowed (will be skipped)
+	}
+	
+	// Clean the path to resolve any ".." or "." elements
+	cleanPath := filepath.Clean(path)
+	
+	// Check for path traversal attempts
+	if strings.Contains(cleanPath, "..") {
+		return fmt.Errorf("TLS file path contains directory traversal sequences: %s", path)
+	}
+	
+	// Ensure the path doesn't start with "../"
+	if strings.HasPrefix(cleanPath, "../") || cleanPath == ".." {
+		return fmt.Errorf("TLS file path attempts to traverse outside allowed directory: %s", path)
+	}
+	
+	return nil
 }

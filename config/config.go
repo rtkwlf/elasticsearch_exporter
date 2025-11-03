@@ -16,6 +16,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"go.yaml.in/yaml/v3"
@@ -52,6 +53,28 @@ type TLSConfig struct {
 type UserPassConfig struct {
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
+}
+
+// validateConfigFilePath validates that a file path in config is safe to use and prevents path traversal attacks.
+func validateConfigFilePath(path, fileType, moduleName string) error {
+	if path == "" {
+		return nil // Empty paths are allowed
+	}
+	
+	// Clean the path to resolve any ".." or "." elements
+	cleanPath := filepath.Clean(path)
+	
+	// Check for path traversal attempts
+	if strings.Contains(cleanPath, "..") {
+		return fmt.Errorf("auth_module %s: %s '%s' contains directory traversal sequences", moduleName, fileType, path)
+	}
+	
+	// Ensure the path doesn't start with "../"
+	if strings.HasPrefix(cleanPath, "../") || cleanPath == ".." {
+		return fmt.Errorf("auth_module %s: %s '%s' attempts to traverse outside allowed directory", moduleName, fileType, path)
+	}
+	
+	return nil
 }
 
 // validate ensures every auth module has the required fields according to its type.
@@ -102,7 +125,7 @@ func (c *Config) validate() error {
 				}
 			}
 
-			// Validate file accessibility
+			// Validate file paths and accessibility
 			for fileType, path := range map[string]string{
 				"ca_file":   am.TLS.CAFile,
 				"cert_file": am.TLS.CertFile,
@@ -111,6 +134,11 @@ func (c *Config) validate() error {
 				if path == "" {
 					continue
 				}
+				// Validate path for security (prevent path traversal)
+				if err := validateConfigFilePath(path, fileType, name); err != nil {
+					return err
+				}
+				// Check file accessibility
 				if _, err := os.Stat(path); err != nil {
 					return fmt.Errorf("auth_module %s: %s '%s' not accessible: %w", name, fileType, path, err)
 				}
