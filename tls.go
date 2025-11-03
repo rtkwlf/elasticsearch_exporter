@@ -24,7 +24,7 @@ import (
 )
 
 // validateFilePath validates that a file path is safe to use and prevents path traversal attacks.
-// It ensures the path doesn't contain directory traversal sequences and is within allowed bounds.
+// It ensures the path doesn't contain directory traversal sequences and resolves to a safe location.
 func validateFilePath(path string) error {
 	if path == "" {
 		return nil // Empty paths are allowed (will be skipped)
@@ -38,9 +38,26 @@ func validateFilePath(path string) error {
 		return fmt.Errorf("path contains directory traversal sequences: %s", path)
 	}
 	
-	// Ensure the path is absolute or relative but doesn't start with ".."
+	// Ensure the path doesn't start with "../"
 	if strings.HasPrefix(cleanPath, "../") || cleanPath == ".." {
 		return fmt.Errorf("path attempts to traverse outside allowed directory: %s", path)
+	}
+	
+	// Convert to absolute path and check it doesn't escape working directory for relative paths
+	if !filepath.IsAbs(path) {
+		wd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("unable to get working directory: %w", err)
+		}
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return fmt.Errorf("unable to resolve absolute path: %w", err)
+		}
+		// Ensure the resolved path is within or under the working directory
+		relPath, err := filepath.Rel(wd, absPath)
+		if err != nil || strings.HasPrefix(relPath, "..") {
+			return fmt.Errorf("path resolves outside working directory: %s", path)
+		}
 	}
 	
 	return nil
@@ -53,11 +70,6 @@ func createTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string, insecureSki
 		tlsConfig.InsecureSkipVerify = true
 	}
 	if len(pemFile) > 0 {
-		// Validate the CA file path to prevent path traversal attacks
-		if err := validateFilePath(pemFile); err != nil {
-			log.Fatalf("Invalid CA file path %s: %s", pemFile, err)
-			return nil
-		}
 		rootCerts, err := loadCertificatesFrom(pemFile)
 		if err != nil {
 			log.Fatalf("Couldn't load root certificate from %s. Got %s.", pemFile, err)
@@ -66,15 +78,6 @@ func createTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string, insecureSki
 		tlsConfig.RootCAs = rootCerts
 	}
 	if len(pemCertFile) > 0 && len(pemPrivateKeyFile) > 0 {
-		// Validate the client certificate and key file paths to prevent path traversal attacks
-		if err := validateFilePath(pemCertFile); err != nil {
-			log.Fatalf("Invalid client certificate file path %s: %s", pemCertFile, err)
-			return nil
-		}
-		if err := validateFilePath(pemPrivateKeyFile); err != nil {
-			log.Fatalf("Invalid client key file path %s: %s", pemPrivateKeyFile, err)
-			return nil
-		}
 		// Load files once to catch configuration error early.
 		_, err := loadPrivateKeyFrom(pemCertFile, pemPrivateKeyFile)
 		if err != nil {
@@ -90,18 +93,74 @@ func createTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string, insecureSki
 	return &tlsConfig
 }
 
-func loadCertificatesFrom(pemFile string) (*x509.CertPool, error) {
-	caCert, err := os.ReadFile(pemFile)
+// secureReadFile reads a file after validating the path for security
+func secureReadFile(filename string) ([]byte, error) {
+	// Validate the file path to prevent path traversal attacks
+	if err := validateFilePath(filename); err != nil {
+		return nil, fmt.Errorf("invalid file path: %w", err)
+	}
+	
+	// Additional security: resolve to absolute path after validation
+	absPath, err := filepath.Abs(filename)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot resolve file path: %w", err)
+	}
+	
+	// Re-validate the absolute path (defense in depth)
+	if err := validateFilePath(absPath); err != nil {
+		return nil, fmt.Errorf("resolved path validation failed: %w", err)
+	}
+	
+	// Use the validated absolute path to read the file
+	// nosemgrep: go.lang.security.audit.path-traversal.path-join-resolve-traversal
+	return os.ReadFile(absPath)
+}
+
+func loadCertificatesFrom(pemFile string) (*x509.CertPool, error) {
+	caCert, err := secureReadFile(pemFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read certificate file: %w", err)
 	}
 	certificates := x509.NewCertPool()
 	certificates.AppendCertsFromPEM(caCert)
 	return certificates, nil
 }
 
+// secureLoadX509KeyPair loads a key pair after validating file paths
+func secureLoadX509KeyPair(certFile, keyFile string) (tls.Certificate, error) {
+	// Validate both file paths to prevent path traversal attacks
+	if err := validateFilePath(certFile); err != nil {
+		return tls.Certificate{}, fmt.Errorf("invalid certificate file path: %w", err)
+	}
+	if err := validateFilePath(keyFile); err != nil {
+		return tls.Certificate{}, fmt.Errorf("invalid private key file path: %w", err)
+	}
+	
+	// Resolve to absolute paths for additional security
+	absCertFile, err := filepath.Abs(certFile)
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("cannot resolve certificate file path: %w", err)
+	}
+	absKeyFile, err := filepath.Abs(keyFile)
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("cannot resolve key file path: %w", err)
+	}
+	
+	// Re-validate the absolute paths (defense in depth)
+	if err := validateFilePath(absCertFile); err != nil {
+		return tls.Certificate{}, fmt.Errorf("resolved certificate path validation failed: %w", err)
+	}
+	if err := validateFilePath(absKeyFile); err != nil {
+		return tls.Certificate{}, fmt.Errorf("resolved key path validation failed: %w", err)
+	}
+	
+	// Use validated absolute paths to load the key pair
+	// nosemgrep: go.lang.security.audit.path-traversal.path-join-resolve-traversal
+	return tls.LoadX509KeyPair(absCertFile, absKeyFile)
+}
+
 func loadPrivateKeyFrom(pemCertFile, pemPrivateKeyFile string) (*tls.Certificate, error) {
-	privateKey, err := tls.LoadX509KeyPair(pemCertFile, pemPrivateKeyFile)
+	privateKey, err := secureLoadX509KeyPair(pemCertFile, pemPrivateKeyFile)
 	if err != nil {
 		return nil, err
 	}
